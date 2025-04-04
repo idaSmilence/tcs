@@ -19,6 +19,7 @@ class SnakeGame {
         this.isGameStarted = false;
         this.difficulty = 'easy';
         this.ws = null;
+        this.wsConnected = false;
 
         // 设置画布大小
         this.canvas.width = this.gridSize * this.cellSize;
@@ -54,6 +55,11 @@ class SnakeGame {
 
         // 加入游戏按钮
         this.joinButton.addEventListener('click', () => {
+            if (!this.wsConnected) {
+                this.nicknameError.textContent = '正在连接服务器，请稍候...';
+                return;
+            }
+            
             const nickname = this.nicknameInput.value;
             if (nickname && nickname.length <= 3) {
                 this.ws.send(JSON.stringify({
@@ -89,54 +95,86 @@ class SnakeGame {
         // 触摸控制
         const touchButtons = ['upBtn', 'downBtn', 'leftBtn', 'rightBtn'];
         touchButtons.forEach(btnId => {
-            document.getElementById(btnId).addEventListener('click', () => {
-                if (!this.isGameStarted) return;
+            const button = document.getElementById(btnId);
+            if (button) {
+                button.addEventListener('click', () => {
+                    if (!this.isGameStarted) return;
 
-                const newDirection = btnId.replace('Btn', '');
-                if (this.isValidDirectionChange(this.direction, newDirection)) {
-                    this.direction = newDirection;
-                    this.sendMove();
-                }
-            });
+                    const newDirection = btnId.replace('Btn', '');
+                    if (this.isValidDirectionChange(this.direction, newDirection)) {
+                        this.direction = newDirection;
+                        this.sendMove();
+                    }
+                });
+            }
         });
     }
 
     setupWebSocket() {
-        this.ws = new WebSocket(`ws://${window.location.host}`);
+        // 使用当前页面的主机名和端口号
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.hostname || 'localhost';
+        const port = window.location.port || '3000';
+        const wsUrl = `${protocol}//${host}:${port}`;
 
-        this.ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            
-            switch (data.type) {
-                case 'joined':
-                    this.playerId = data.playerId;
-                    this.isGameStarted = true;
-                    this.nicknamePanel.classList.add('hidden');
-                    this.startGameLoop();
-                    break;
+        console.log('Connecting to WebSocket server at:', wsUrl);
+        this.ws = new WebSocket(wsUrl);
 
-                case 'gameState':
-                    this.players = new Map(data.players.map(p => [p.id, p]));
-                    this.foods = data.foods;
-                    this.updateLeaderboard();
-                    break;
-
-                case 'dead':
-                    alert(`游戏结束！你的得分：${data.score}`);
-                    this.isGameStarted = false;
-                    this.nicknamePanel.classList.remove('hidden');
-                    break;
-
-                case 'error':
-                    this.nicknameError.textContent = data.message;
-                    break;
-            }
+        this.ws.onopen = () => {
+            console.log('WebSocket connection established');
+            this.wsConnected = true;
+            this.nicknameError.textContent = '';
+            this.joinButton.disabled = false;
         };
 
         this.ws.onclose = () => {
-            alert('与服务器的连接已断开');
+            console.log('WebSocket connection closed');
+            this.wsConnected = false;
             this.isGameStarted = false;
             this.nicknamePanel.classList.remove('hidden');
+            this.nicknameError.textContent = '与服务器的连接已断开，请刷新页面重试';
+            this.joinButton.disabled = true;
+        };
+
+        this.ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            this.wsConnected = false;
+            this.nicknameError.textContent = '连接服务器失败，请刷新页面重试';
+            this.joinButton.disabled = true;
+        };
+
+        this.ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('Received message:', data);
+                
+                switch (data.type) {
+                    case 'joined':
+                        this.playerId = data.playerId;
+                        this.isGameStarted = true;
+                        this.nicknamePanel.classList.add('hidden');
+                        this.startGameLoop();
+                        break;
+
+                    case 'gameState':
+                        this.players = new Map(data.players.map(p => [p.id, p]));
+                        this.foods = data.foods;
+                        this.updateLeaderboard();
+                        break;
+
+                    case 'dead':
+                        alert(`游戏结束！你的得分：${data.score}`);
+                        this.isGameStarted = false;
+                        this.nicknamePanel.classList.remove('hidden');
+                        break;
+
+                    case 'error':
+                        this.nicknameError.textContent = data.message;
+                        break;
+                }
+            } catch (error) {
+                console.error('Error parsing message:', error);
+            }
         };
     }
 
