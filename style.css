@@ -51,6 +51,10 @@ h1 {
 
 /* 游戏主区域 */
 .game-main {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -76,8 +80,9 @@ h1 {
 /* 游戏画布 */
 #gameCanvas {
     display: block;
-    background: white;
+    background: #f0f0f0;
     border-radius: 10px;
+    margin: 0 auto;
     box-shadow: 0 5px 15px var(--shadow-color);
     max-width: 100%;
     height: auto;
@@ -364,4 +369,73 @@ button:hover {
     .current-player-mark {
         background: rgba(255, 255, 255, 0.1);
     }
+}
+
+.nickname-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    z-index: 1000;
+    min-width: 300px;
+}
+
+.nickname-panel h2 {
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+.nickname-input-container {
+    margin-bottom: 1.5rem;
+}
+
+.nickname-input-container input {
+    width: 100%;
+    padding: 0.8rem;
+    font-size: 1.1rem;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.nickname-input-container input:focus {
+    border-color: #4CAF50;
+    outline: none;
+}
+
+.error-message {
+    color: #f44336;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    display: block;
+    min-height: 1.2em;
+}
+
+#join-game {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#join-game:hover {
+    background-color: #45a049;
+}
+
+#join-game:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.hidden {
+    display: none !important;
 } 

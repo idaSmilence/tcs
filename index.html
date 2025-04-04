@@ -1,132 +1,69 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>多人贪吃蛇</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="game-container">
-        <h1>多人贪吃蛇</h1>
-        
         <div class="game-main">
-            <div class="score-container">
-                <div id="playerInfo">等待连接...</div>
-                <div id="currentScore">当前得分: 0</div>
+            <div id="nickname-panel" class="nickname-panel">
+                <h2>请输入昵称</h2>
+                <div class="nickname-input-container">
+                    <input type="text" id="nickname" maxlength="3" placeholder="最多3个字">
+                    <span class="error-message" id="nickname-error"></span>
+                </div>
+                <button id="join-game">加入游戏</button>
             </div>
-
             <canvas id="gameCanvas"></canvas>
-
             <div class="touch-controls">
-                <button class="control-btn" data-direction="up">↑</button>
-                <button class="control-btn" data-direction="left">←</button>
-                <button class="control-btn" data-direction="right">→</button>
-                <button class="control-btn" data-direction="down">↓</button>
+                <button id="upBtn">↑</button>
+                <button id="leftBtn">←</button>
+                <button id="rightBtn">→</button>
+                <button id="downBtn">↓</button>
             </div>
         </div>
 
-        <!-- 游戏设置面板 -->
-        <div class="expandable-panel">
-            <div class="panel-header" onclick="togglePanel(this)">
-                <span>游戏设置</span>
-                <span class="icon">▼</span>
+        <div class="expandable-panels">
+            <div class="panel settings-panel">
+                <div class="panel-header" onclick="togglePanel('settings')">
+                    <h3>游戏设置</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="panel-content" id="settings-content">
+                    <form class="settings-form">
+                        <div class="setting-group">
+                            <label>难度：</label>
+                            <select id="difficulty">
+                                <option value="easy">简单</option>
+                                <option value="hard">困难</option>
+                                <option value="hell">地狱</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="panel-content">
-                <div class="settings-form">
-                    <div class="form-group">
-                        <label for="difficulty">难度选择</label>
-                        <select id="difficulty">
-                            <option value="easy">简单</option>
-                            <option value="hard">困难</option>
-                            <option value="hell">地狱</option>
-                        </select>
+
+            <div class="panel leaderboard-panel">
+                <div class="panel-header" onclick="togglePanel('leaderboard')">
+                    <h3>在线玩家 & 排行榜</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="panel-content" id="leaderboard-content">
+                    <div class="online-players">
+                        <h4>在线玩家</h4>
+                        <div id="online-players-list"></div>
                     </div>
-                    
-                    <button id="startBtn">开始游戏</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 在线玩家面板 -->
-        <div class="expandable-panel">
-            <div class="panel-header" onclick="togglePanel(this)">
-                <span>在线玩家</span>
-                <span class="icon">▼</span>
-            </div>
-            <div class="panel-content">
-                <div class="players-list" id="playersList">
-                    <!-- 在线玩家列表将由JavaScript动态添加 -->
-                </div>
-            </div>
-        </div>
-
-        <!-- 排行榜面板 -->
-        <div class="expandable-panel">
-            <div class="panel-header" onclick="togglePanel(this)">
-                <span>实时排行榜</span>
-                <span class="icon">▼</span>
-            </div>
-            <div class="panel-content">
-                <div class="leaderboard-content" id="leaderboardList">
-                    <!-- 排行榜项目将由JavaScript动态添加 -->
+                    <div class="leaderboard">
+                        <h4>排行榜</h4>
+                        <div id="leaderboard-list"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <div id="gameOver" class="hidden">
-        <h2>游戏结束</h2>
-        <div id="finalScore"></div>
-        <button id="restartBtn">重新开始</button>
-    </div>
-
-    <script>
-        // 面板展开/收起功能
-        function togglePanel(header) {
-            const panel = header.nextElementSibling;
-            const icon = header.querySelector('.icon');
-            
-            // 切换当前面板的状态
-            header.classList.toggle('active');
-            panel.classList.toggle('active');
-            
-            // 关闭其他面板
-            const allPanels = document.querySelectorAll('.panel-content');
-            const allHeaders = document.querySelectorAll('.panel-header');
-            
-            allPanels.forEach((p, i) => {
-                if (p !== panel) {
-                    p.classList.remove('active');
-                    allHeaders[i].classList.remove('active');
-                }
-            });
-        }
-
-        // 添加玩家列表项
-        function addPlayerItem(playerId, score, isCurrentPlayer = false) {
-            const item = document.createElement('div');
-            item.className = 'player-item' + (isCurrentPlayer ? ' current-player' : '');
-            item.innerHTML = `
-                <span class="player-id">玩家 ${playerId}</span>
-                <span class="player-score">${score}分</span>
-                ${isCurrentPlayer ? '<span class="current-player-mark">(我)</span>' : ''}
-            `;
-            return item;
-        }
-
-        // 添加排行榜项目
-        function addLeaderboardItem(rank, playerId, score, isCurrentPlayer = false) {
-            const item = document.createElement('div');
-            item.className = 'leaderboard-item' + (isCurrentPlayer ? ' current-player' : '');
-            item.innerHTML = `
-                <span class="rank">#${rank}</span>
-                <span class="name">玩家 ${playerId}</span>
-                <span class="score">${score}分</span>
-            `;
-            return item;
-        }
-    </script>
     <script src="script.js"></script>
 </body>
 </html> 
