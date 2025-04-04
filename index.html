@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>炫酷贪食蛇</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧控制面板 -->
+        <div class="control-panel">
+            <h2>游戏控制</h2>
+            <div class="difficulty-selector">
+                <label>难度选择：</label>
+                <select id="difficulty">
+                    <option value="easy">简单</option>
+                    <option value="hard">困难</option>
+                    <option value="hell">地狱</option>
+                </select>
+            </div>
+            <button id="startBtn" class="glow-button">开始游戏</button>
+            <div class="score-info">
+                <h3>当前分数</h3>
+                <div id="currentScore">0</div>
+                <h3>最高分数</h3>
+                <div id="highScore">0</div>
+            </div>
+            <div class="controls-info">
+                <h3>操作说明</h3>
+                <p>↑ 向上移动</p>
+                <p>↓ 向下移动</p>
+                <p>← 向左移动</p>
+                <p>→ 向右移动</p>
+            </div>
+        </div>
+
+        <!-- 中间游戏区域 -->
+        <div class="game-container">
+            <canvas id="gameCanvas"></canvas>
+            <div id="gameOver" class="game-over hidden">
+                <h2>游戏结束</h2>
+                <p>最终得分: <span id="finalScore">0</span></p>
+                <button id="restartBtn" class="glow-button">重新开始</button>
+            </div>
+        </div>
+
+        <!-- 右侧排行榜 -->
+        <div class="leaderboard">
+            <h2>排行榜 TOP10</h2>
+            <div class="leaderboard-header">
+                <span>排名</span>
+                <span>分数</span>
+                <span>难度</span>
+            </div>
+            <div id="leaderboardList"></div>
+        </div>
+    </div>
+
+    <!-- 游戏脚本 -->
+    <script src="script.js"></script>
+</body>
+</html> 
