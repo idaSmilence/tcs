@@ -375,26 +375,51 @@ class SnakeGame {
     initEventListeners() {
         // 键盘控制
         document.addEventListener('keydown', (e) => {
-            this.snakes.forEach((snake, index) => {
-                if (!snake.isAI && !snake.isDead) {
-                    if (snake.controls === 'arrows') {
-                        if (e.key === 'ArrowUp' && snake.direction !== 'down') snake.nextDirection = 'up';
-                        else if (e.key === 'ArrowDown' && snake.direction !== 'up') snake.nextDirection = 'down';
-                        else if (e.key === 'ArrowLeft' && snake.direction !== 'right') snake.nextDirection = 'left';
-                        else if (e.key === 'ArrowRight' && snake.direction !== 'left') snake.nextDirection = 'right';
-                    } else if (snake.controls === 'wasd') {
-                        if (e.key.toLowerCase() === 'w' && snake.direction !== 'down') snake.nextDirection = 'up';
-                        else if (e.key.toLowerCase() === 's' && snake.direction !== 'up') snake.nextDirection = 'down';
-                        else if (e.key.toLowerCase() === 'a' && snake.direction !== 'right') snake.nextDirection = 'left';
-                        else if (e.key.toLowerCase() === 'd' && snake.direction !== 'left') snake.nextDirection = 'right';
+            this.handleInput(e.key);
+        });
+
+        // 触摸控制
+        const touchControls = document.querySelector('.touch-controls');
+        if (touchControls) {
+            touchControls.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const button = e.target.closest('.control-btn');
+                if (button) {
+                    const direction = button.dataset.direction;
+                    switch (direction) {
+                        case 'up': this.handleInput('ArrowUp'); break;
+                        case 'down': this.handleInput('ArrowDown'); break;
+                        case 'left': this.handleInput('ArrowLeft'); break;
+                        case 'right': this.handleInput('ArrowRight'); break;
                     }
                 }
             });
-        });
+
+            // 防止触摸滚动
+            touchControls.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+        }
 
         // 难度选择
         document.getElementById('difficulty').addEventListener('change', (e) => {
             this.difficulty = e.target.value;
+        });
+
+        // 开始按钮
+        document.getElementById('startBtn').addEventListener('click', () => {
+            const playerCount = parseInt(document.getElementById('playerCount').value);
+            const aiCount = parseInt(document.getElementById('aiCount').value);
+            
+            if (playerCount >= 1 && playerCount <= 2 && aiCount >= 0 && aiCount <= 5) {
+                this.playerCount = playerCount;
+                this.aiCount = aiCount;
+                this.totalPlayers = playerCount + aiCount;
+                this.initializeSnakes();
+                this.start();
+            } else {
+                alert('请输入有效的玩家数量！');
+            }
         });
 
         // 重新开始按钮
@@ -403,142 +428,57 @@ class SnakeGame {
             this.initializeSnakes();
             this.start();
         });
-    }
 
-    /**
-     * AI决策
-     */
-    updateAI(snake, index) {
-        if (!snake.isAI || snake.isDead) return;
-
-        // 找到最近的食物
-        let nearestFood = this.findNearestFood(snake.body[0]);
-        
-        // 如果附近有其他蛇的尾部，考虑追击
-        let nearestTail = this.findNearestTail(snake.body[0], index);
-        
-        // 决定追击食物还是尾部
-        let target = nearestFood;
-        if (nearestTail && this.calculateDistance(snake.body[0], nearestTail) < 
-            this.calculateDistance(snake.body[0], nearestFood)) {
-            target = nearestTail;
-        }
-
-        // 避免碰撞的简单路径规划
-        const possibleDirections = ['up', 'down', 'left', 'right'];
-        const safeDirections = possibleDirections.filter(dir => {
-            const nextHead = this.getNextPosition(snake.body[0], dir);
-            return !this.checkCollision(nextHead, index);
+        // 处理屏幕方向变化
+        window.addEventListener('resize', () => {
+            this.resizeCanvas();
         });
-
-        if (safeDirections.length > 0) {
-            // 选择最接近目标的安全方向
-            let bestDirection = safeDirections[0];
-            let minDistance = Infinity;
-            
-            safeDirections.forEach(dir => {
-                const nextPos = this.getNextPosition(snake.body[0], dir);
-                const distance = this.calculateDistance(nextPos, target);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    bestDirection = dir;
-                }
-            });
-
-            if (bestDirection !== this.getOppositeDirection(snake.direction)) {
-                snake.nextDirection = bestDirection;
-            }
-        }
     }
 
     /**
-     * 计算两点间距离
+     * 处理输入
      */
-    calculateDistance(pos1, pos2) {
-        return Math.sqrt(Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2));
-    }
-
-    /**
-     * 获取相反方向
-     */
-    getOppositeDirection(direction) {
-        const opposites = {
-            'up': 'down',
-            'down': 'up',
-            'left': 'right',
-            'right': 'left'
-        };
-        return opposites[direction];
-    }
-
-    /**
-     * 找到最近的食物
-     */
-    findNearestFood(position) {
-        let nearest = this.foods[0];
-        let minDistance = Infinity;
-        
-        this.foods.forEach(food => {
-            const distance = this.calculateDistance(position, food);
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearest = food;
-            }
-        });
-        
-        return nearest;
-    }
-
-    /**
-     * 找到最近的蛇尾
-     */
-    findNearestTail(position, currentSnakeIndex) {
-        let nearest = null;
-        let minDistance = Infinity;
-        
+    handleInput(key) {
         this.snakes.forEach((snake, index) => {
-            if (index !== currentSnakeIndex && !snake.isDead) {
-                // 获取尾部最后三个位置
-                const tailSegments = snake.body.slice(-3);
-                tailSegments.forEach(segment => {
-                    const distance = this.calculateDistance(position, segment);
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        nearest = segment;
-                    }
-                });
+            if (!snake.isAI && !snake.isDead) {
+                if (snake.controls === 'arrows') {
+                    if (key === 'ArrowUp' && snake.direction !== 'down') snake.nextDirection = 'up';
+                    else if (key === 'ArrowDown' && snake.direction !== 'up') snake.nextDirection = 'down';
+                    else if (key === 'ArrowLeft' && snake.direction !== 'right') snake.nextDirection = 'left';
+                    else if (key === 'ArrowRight' && snake.direction !== 'left') snake.nextDirection = 'right';
+                } else if (snake.controls === 'wasd') {
+                    if (key.toLowerCase() === 'w' && snake.direction !== 'down') snake.nextDirection = 'up';
+                    else if (key.toLowerCase() === 's' && snake.direction !== 'up') snake.nextDirection = 'down';
+                    else if (key.toLowerCase() === 'a' && snake.direction !== 'right') snake.nextDirection = 'left';
+                    else if (key.toLowerCase() === 'd' && snake.direction !== 'left') snake.nextDirection = 'right';
+                }
             }
         });
-        
-        return nearest;
     }
 
     /**
-     * 获取下一个位置
+     * 调整画布大小
      */
-    getNextPosition(position, direction) {
-        const next = { ...position };
-        switch(direction) {
-            case 'up': next.y--; break;
-            case 'down': next.y++; break;
-            case 'left': next.x--; break;
-            case 'right': next.x++; break;
-        }
-        return next;
+    resizeCanvas() {
+        const container = document.querySelector('.game-container');
+        const containerWidth = container.clientWidth;
+        this.canvas.width = Math.min(containerWidth - 20, 600);
+        this.canvas.height = this.canvas.width;
+        this.gridSize = this.canvas.width / 30; // 保持30x30的网格
     }
 
     /**
-     * 开始新游戏
-     * 初始化蛇的位置和游戏状态
+     * 开始游戏
      */
     start() {
-        this.foods = []; // 清空食物数组
-        this.generateFoods(); // 生成新的食物
+        this.resizeCanvas();
+        this.foods = [];
+        this.generateFoods();
         
-        // 清除之前的游戏循环
-        if (this.gameLoop) clearInterval(this.gameLoop);
+        if (this.gameLoop) {
+            clearInterval(this.gameLoop);
+        }
         
-        // 开始新的游戏循环
         this.gameLoop = setInterval(() => this.update(), this.speeds[this.difficulty]);
     }
 
@@ -569,6 +509,7 @@ class SnakeGame {
     update() {
         // 更新所有蛇
         this.snakes.forEach((snake, index) => {
+            // 如果蛇已经死亡，处理复活逻辑
             if (snake.isDead) {
                 if (snake.isAI) {
                     // AI蛇死亡后3秒复活
@@ -577,7 +518,7 @@ class SnakeGame {
                         this.respawnSnake(index);
                     }
                 }
-                return;
+                return; // 如果蛇死亡，直接返回不处理后续逻辑
             }
 
             // AI决策
@@ -589,55 +530,65 @@ class SnakeGame {
             snake.direction = snake.nextDirection;
 
             // 计算新的头部位置
-            const head = this.getNextPosition(snake.body[0], snake.direction);
+            const head = snake.body[0];
+            if (!head) {
+                snake.isDead = true;
+                return;
+            }
+
+            const nextPosition = this.getNextPosition(head, snake.direction);
+            if (!nextPosition) {
+                snake.isDead = true;
+                return;
+            }
 
             // 检查碰撞
-            if (this.checkCollision(head, index)) {
+            if (this.checkCollision(nextPosition, index)) {
                 if (snake.isAI) {
                     snake.isDead = true;
                     snake.respawnTimer = 0;
                 } else {
                     this.gameOver();
-                    return;
                 }
+                return;
+            }
+
+            // 移动蛇
+            snake.body.unshift(nextPosition);
+
+            // 检查是否吃到食物
+            const foodIndex = this.foods.findIndex(food => 
+                food && food.x === nextPosition.x && food.y === nextPosition.y
+            );
+
+            if (foodIndex !== -1) {
+                this.sounds.eat();
+                snake.score += this.points[this.difficulty];
+                this.foods.splice(foodIndex, 1);
+                this.generateFoods();
             } else {
-                // 移动蛇
-                snake.body.unshift(head);
-
-                // 检查是否吃到食物
-                const foodIndex = this.foods.findIndex(food => 
-                    food.x === head.x && food.y === head.y
-                );
-
-                if (foodIndex !== -1) {
-                    this.sounds.eat();
-                    snake.score += this.points[this.difficulty];
-                    this.foods.splice(foodIndex, 1);
-                    this.generateFoods();
-                } else {
-                    // 检查是否吃到其他蛇的尾部
-                    let tailEaten = false;
-                    this.snakes.forEach((otherSnake, otherIndex) => {
-                        if (index !== otherIndex && !otherSnake.isDead) {
-                            const tailSegments = otherSnake.body.slice(-3);
-                            if (tailSegments.some(segment => 
-                                segment.x === head.x && segment.y === head.y
-                            )) {
-                                // 吃掉尾部，获得长度
-                                const eatenLength = otherSnake.body.length;
-                                otherSnake.body = otherSnake.body.slice(0, -3);
-                                for (let i = 0; i < eatenLength; i++) {
-                                    snake.body.push({...snake.body[snake.body.length - 1]});
-                                }
-                                snake.score += Math.floor(eatenLength / 2);
-                                tailEaten = true;
+                // 检查是否吃到其他蛇的尾部
+                let tailEaten = false;
+                this.snakes.forEach((otherSnake, otherIndex) => {
+                    if (index !== otherIndex && !otherSnake.isDead && otherSnake.body.length > 3) {
+                        const tailSegments = otherSnake.body.slice(-3);
+                        if (tailSegments.some(segment => 
+                            segment && segment.x === nextPosition.x && segment.y === nextPosition.y
+                        )) {
+                            // 吃掉尾部，获得长度
+                            const eatenLength = otherSnake.body.length;
+                            otherSnake.body = otherSnake.body.slice(0, -3);
+                            for (let i = 0; i < eatenLength; i++) {
+                                snake.body.push({...snake.body[snake.body.length - 1]});
                             }
+                            snake.score += Math.floor(eatenLength / 2);
+                            tailEaten = true;
                         }
-                    });
-
-                    if (!tailEaten) {
-                        snake.body.pop();
                     }
+                });
+
+                if (!tailEaten) {
+                    snake.body.pop();
                 }
             }
         });
@@ -672,31 +623,33 @@ class SnakeGame {
     /**
      * 检查碰撞
      */
-    checkCollision(head, snakeIndex) {
+    checkCollision(position, snakeIndex) {
+        if (!position) return true;
+
         // 检查墙壁碰撞
-        if (head.x < 0 || head.x >= this.canvas.width / this.gridSize ||
-            head.y < 0 || head.y >= this.canvas.height / this.gridSize) {
+        if (position.x < 0 || position.x >= this.canvas.width / this.gridSize ||
+            position.y < 0 || position.y >= this.canvas.height / this.gridSize) {
             return true;
         }
 
         // 检查与所有蛇的碰撞
         return this.snakes.some((otherSnake, otherIndex) => {
-            if (otherSnake.isDead) return false;
+            if (otherSnake.isDead || !otherSnake.body) return false;
             
             // 如果是同一条蛇，检查自身碰撞（除了尾部）
             if (otherIndex === snakeIndex) {
                 return otherSnake.body.some((segment, segIndex) => 
-                    segIndex < otherSnake.body.length - 3 && 
-                    segment.x === head.x && 
-                    segment.y === head.y
+                    segment && segIndex < otherSnake.body.length - 3 && 
+                    segment.x === position.x && 
+                    segment.y === position.y
                 );
             }
             
             // 如果是其他蛇，检查除尾部外的碰撞
             return otherSnake.body.some((segment, segIndex) => 
-                segIndex < otherSnake.body.length - 3 &&
-                segment.x === head.x && 
-                segment.y === head.y
+                segment && segIndex < otherSnake.body.length - 3 &&
+                segment.x === position.x && 
+                segment.y === position.y
             );
         });
     }
@@ -811,6 +764,183 @@ class SnakeGame {
         
         document.getElementById('gameOver').classList.remove('hidden');
         document.getElementById('finalScore').textContent = winnerText;
+    }
+
+    /**
+     * 根据当前位置和方向计算下一个位置
+     */
+    getNextPosition(position, direction) {
+        if (!position) return null;
+        
+        const next = { x: position.x, y: position.y };
+        switch (direction) {
+            case 'up':
+                next.y--;
+                break;
+            case 'down':
+                next.y++;
+                break;
+            case 'left':
+                next.x--;
+                break;
+            case 'right':
+                next.x++;
+                break;
+            default:
+                return null;
+        }
+        return next;
+    }
+
+    /**
+     * 显示排行榜
+     * @param {Array} leaderboard 排行榜数据
+     */
+    displayLeaderboard(leaderboard) {
+        const leaderboardList = document.getElementById('leaderboardList');
+        leaderboardList.innerHTML = ''; // 清空现有内容
+
+        // 对排行榜数据进行排序
+        const sortedLeaderboard = [...leaderboard]
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 10); // 只显示前10名
+
+        // 添加排行榜项目
+        sortedLeaderboard.forEach((entry, index) => {
+            const item = addLeaderboardItem(
+                index + 1,
+                entry.name || '匿名',
+                entry.score
+            );
+            leaderboardList.appendChild(item);
+        });
+
+        // 如果没有数据，显示提示信息
+        if (sortedLeaderboard.length === 0) {
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'leaderboard-item';
+            emptyMessage.innerHTML = '<span class="name">暂无记录</span>';
+            leaderboardList.appendChild(emptyMessage);
+        }
+    }
+
+    /**
+     * 更新AI蛇的移动方向
+     * @param {Object} snake AI蛇对象
+     * @param {number} index 蛇的索引
+     */
+    updateAI(snake, index) {
+        // 获取当前头部位置
+        const head = snake.body[0];
+        
+        // 找到最近的食物
+        let nearestFood = this.findNearestFood(head);
+        
+        // 如果附近有其他蛇的尾巴，考虑追击
+        const nearestTail = this.findNearestTail(head, index);
+        if (nearestTail && this.getDistance(head, nearestTail) < this.getDistance(head, nearestFood)) {
+            nearestFood = nearestTail;
+        }
+
+        // 计算到目标的方向
+        const directions = ['up', 'down', 'left', 'right'];
+        let bestDirection = snake.direction;
+        let minDistance = Infinity;
+
+        // 评估每个可能的方向
+        directions.forEach(direction => {
+            // 不能往反方向走
+            if (this.isOppositeDirection(direction, snake.direction)) {
+                return;
+            }
+
+            // 计算该方向下一个位置
+            const nextPos = this.getNextPosition(head, direction);
+            
+            // 检查是否会导致碰撞
+            if (this.checkCollision(nextPos, index)) {
+                return;
+            }
+
+            // 计算到目标的距离
+            const distance = this.getDistance(nextPos, nearestFood);
+            
+            // 如果这个方向更接近目标，更新最佳方向
+            if (distance < minDistance) {
+                minDistance = distance;
+                bestDirection = direction;
+            }
+        });
+
+        // 更新方向
+        snake.nextDirection = bestDirection;
+    }
+
+    /**
+     * 找到最近的食物
+     * @param {Object} position 当前位置
+     * @returns {Object} 最近的食物位置
+     */
+    findNearestFood(position) {
+        let nearest = this.foods[0];
+        let minDistance = Infinity;
+
+        this.foods.forEach(food => {
+            const distance = this.getDistance(position, food);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = food;
+            }
+        });
+
+        return nearest;
+    }
+
+    /**
+     * 找到最近的其他蛇的尾巴
+     * @param {Object} position 当前位置
+     * @param {number} currentSnakeIndex 当前蛇的索引
+     * @returns {Object|null} 最近的尾巴位置或null
+     */
+    findNearestTail(position, currentSnakeIndex) {
+        let nearest = null;
+        let minDistance = Infinity;
+
+        this.snakes.forEach((snake, index) => {
+            if (index !== currentSnakeIndex && !snake.isDead) {
+                const tail = snake.body[snake.body.length - 1];
+                const distance = this.getDistance(position, tail);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearest = tail;
+                }
+            }
+        });
+
+        return nearest;
+    }
+
+    /**
+     * 计算两点之间的距离
+     * @param {Object} pos1 第一个位置
+     * @param {Object} pos2 第二个位置
+     * @returns {number} 距离
+     */
+    getDistance(pos1, pos2) {
+        return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
+    }
+
+    /**
+     * 检查是否是相反的方向
+     * @param {string} dir1 第一个方向
+     * @param {string} dir2 第二个方向
+     * @returns {boolean} 是否相反
+     */
+    isOppositeDirection(dir1, dir2) {
+        return (dir1 === 'up' && dir2 === 'down') ||
+               (dir1 === 'down' && dir2 === 'up') ||
+               (dir1 === 'left' && dir2 === 'right') ||
+               (dir1 === 'right' && dir2 === 'left');
     }
 }
 
